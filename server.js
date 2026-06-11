@@ -15,6 +15,8 @@ const SYSTEM_PROMPT = `You are the EHS Agent for Embrenn Hardware Solutions (EHS
 
 Keep replies concise (2-4 sentences max). If you need to escalate or don't know something, offer to connect them with the human team. Never make up specific prices or order details — offer to have the team follow up instead. Always stay on-brand: helpful, approachable, and knowledgeable about hardware.`;
 
+app.get('/', (req, res) => res.send('EHS Agent is running!'));
+
 app.post('/chat', async (req, res) => {
   const { messages } = req.body;
   if (!messages || !Array.isArray(messages)) {
@@ -36,11 +38,21 @@ app.post('/chat', async (req, res) => {
       })
     });
     const data = await response.json();
+    console.log('Anthropic response status:', response.status);
+    console.log('Anthropic response:', JSON.stringify(data));
+    if (data.error) {
+      console.error('Anthropic API error:', data.error);
+      return res.status(500).json({ reply: 'Sorry, I am having trouble connecting right now. Please try again in a moment!' });
+    }
+    if (!data.content || !Array.isArray(data.content)) {
+      console.error('Unexpected response format:', data);
+      return res.status(500).json({ reply: 'Sorry, I am having trouble connecting right now. Please try again in a moment!' });
+    }
     const reply = data.content.map(b => b.text || '').join('');
     res.json({ reply });
   } catch (err) {
-    console.error('API error:', err);
-    res.status(500).json({ error: 'Something went wrong. Please try again.' });
+    console.error('Server error:', err);
+    res.status(500).json({ reply: 'Sorry, I am having trouble connecting right now. Please try again in a moment!' });
   }
 });
 

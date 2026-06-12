@@ -279,16 +279,67 @@ app.get('/widget.js', (req, res) => {
     if (quoteStep === 0) { quoteName = txt; quoteStep = 1; updateProgress(1); addMsg(quoteSteps[1].msg, 'a'); document.getElementById('ehs-in').placeholder = 'Enter your email address...'; }
     else if (quoteStep === 1) { quoteEmail = txt; quoteStep = 2; updateProgress(2); addMsg(quoteSteps[2].msg, 'a'); document.getElementById('ehs-in').placeholder = 'Enter your company name...'; }
     else if (quoteStep === 2) { quoteCompany = txt; quoteStep = 3; updateProgress(3); addMsg(quoteSteps[3].msg, 'a'); document.getElementById('ehs-in').placeholder = 'Enter phone number or type skip...'; }
-    else if (quoteStep === 3) { quotePhone = (txt.toLowerCase() === 'skip') ? 'Not provided' : txt; quoteStep = 4; updateProgress(4); addMsg(quoteSteps[4].msg, 'a'); document.getElementById('ehs-in').placeholder = 'e.g. QB55C-N x5, QM75C x2...'; }
+    else if (quoteStep === 3) {
+      quotePhone = (txt.toLowerCase() === 'skip') ? 'Not provided' : txt;
+      if (inQuote && quoteStep === 3 && quoteProducts !== '') { inQuote = false; showConfirmation(); }
+      else { quoteStep = 4; updateProgress(4); addMsg(quoteSteps[4].msg, 'a'); document.getElementById('ehs-in').placeholder = 'e.g. QB55C-N x5, QM75C x2...'; }
+    }
     else if (quoteStep === 4) { quoteProducts = txt; finishQuote(); }
+    else if (quoteStep === 99) {
+      var edit = txt.toLowerCase();
+      if (edit.indexOf('name') !== -1) { addMsg('What is the correct name?', 'a'); quoteStep = 0; document.getElementById('ehs-in').placeholder = 'Enter your full name...'; }
+      else if (edit.indexOf('email') !== -1) { addMsg('What is the correct email address?', 'a'); quoteStep = 1; document.getElementById('ehs-in').placeholder = 'Enter your email address...'; }
+      else if (edit.indexOf('company') !== -1) { addMsg('What is the correct company name?', 'a'); quoteStep = 2; document.getElementById('ehs-in').placeholder = 'Enter your company name...'; }
+      else if (edit.indexOf('phone') !== -1) { addMsg('What is the correct phone number?', 'a'); quoteStep = 3; document.getElementById('ehs-in').placeholder = 'Enter phone number...'; }
+      else if (edit.indexOf('product') !== -1 || edit.indexOf('qty') !== -1 || edit.indexOf('quant') !== -1) { addMsg('Please re-enter your products and quantities.', 'a'); quoteStep = 4; document.getElementById('ehs-in').placeholder = 'e.g. QB55C-N x5, QM75C x2...'; }
+      else { addMsg('Please specify what to edit: name, email, company, phone, or products.', 'a'); quoteStep = 99; }
+    }
   }
 
   function finishQuote() {
     inQuote = false;
     document.getElementById('ehs-prog').classList.remove('on');
     document.getElementById('ehs-in').placeholder = 'Ask EHS Agent a question...';
-    var summary = 'Thank you ' + quoteName + ' from ' + quoteCompany + '. Our sales team will contact you at ' + quoteEmail + (quotePhone !== 'Not provided' ? ' or ' + quotePhone : '') + ' within 10 minutes with your quote for: ' + quoteProducts + '.';
-    addMsg(summary, 'a');
+    showConfirmation();
+  }
+
+  function showConfirmation() {
+    var ms = document.getElementById('ehs-ms');
+    var summary = 'Name: ' + quoteName + '\nEmail: ' + quoteEmail + '\nCompany: ' + quoteCompany + '\nPhone: ' + (quotePhone !== 'Not provided' ? quotePhone : 'Not provided') + '\nProducts: ' + quoteProducts;
+    addMsg('Please review your details before we send:', 'a');
+    var card = document.createElement('div');
+    card.style.cssText = 'background:#f0f6ff;border:1px solid #c3d9f5;border-radius:8px;padding:10px 12px;font-size:12px;color:#333;line-height:1.8;white-space:pre-line;margin-top:2px;';
+    card.textContent = summary;
+    ms.appendChild(card);
+    var btnWrap = document.createElement('div');
+    btnWrap.style.cssText = 'display:flex;gap:8px;margin-top:6px;';
+    var yesBtn = document.createElement('button');
+    yesBtn.style.cssText = 'flex:1;background:#185FA5;color:#fff;border:none;border-radius:8px;padding:9px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600;';
+    yesBtn.textContent = 'Yes, submit';
+    var noBtn = document.createElement('button');
+    noBtn.style.cssText = 'flex:1;background:#fff;color:#185FA5;border:1px solid #185FA5;border-radius:8px;padding:9px;font-size:13px;cursor:pointer;font-family:inherit;';
+    noBtn.textContent = 'No, edit details';
+    yesBtn.onclick = function() {
+      btnWrap.remove(); card.remove();
+      submitQuote();
+    };
+    noBtn.onclick = function() {
+      btnWrap.remove(); card.remove();
+      inQuote = true;
+      addMsg('No problem — what would you like to edit? (e.g. name, email, company, phone, or products)', 'a');
+      document.getElementById('ehs-in').placeholder = 'Tell me what to fix...';
+      document.getElementById('ehs-in').focus();
+      quoteStep = 99;
+    };
+    btnWrap.appendChild(yesBtn);
+    btnWrap.appendChild(noBtn);
+    ms.appendChild(btnWrap);
+    ms.scrollTop = ms.scrollHeight;
+  }
+
+  function submitQuote() {
+    var finalMsg = 'Thank you ' + quoteName + '. Your quote request has been submitted — our sales team will contact you at ' + quoteEmail + ' within 10 minutes.';
+    addMsg(finalMsg, 'a');
     fetch(QUOTE_URL, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ name: quoteName, email: quoteEmail, company: quoteCompany, phone: quotePhone, products: quoteProducts, product: productCtx ? productCtx.name : null }) }).catch(function(e) { console.error('Quote email error:', e); });
   }
 

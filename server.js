@@ -23,23 +23,10 @@ PRODUCT PAGE BEHAVIOR:
 
 async function sendLeadEmail(lead) {
   try {
-    const body = `
-New Quote Request from EHS Agent
-
-Name: ${lead.name}
-Email: ${lead.email}
-Company: ${lead.company}
-Phone: ${lead.phone}
-${lead.product ? 'Product Interest: ' + lead.product : ''}
-Submitted: ${new Date().toLocaleString('en-CA', { timeZone: 'America/Toronto' })}
-    `.trim();
-
+    const body = `New Quote Request from EHS Agent\n\nName: ${lead.name}\nEmail: ${lead.email}\nCompany: ${lead.company}\nPhone: ${lead.phone}\n${lead.product ? 'Product Interest: ' + lead.product : ''}\nSubmitted: ${new Date().toLocaleString('en-CA', { timeZone: 'America/Toronto' })}`.trim();
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + process.env.RESEND_API_KEY
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + process.env.RESEND_API_KEY },
       body: JSON.stringify({
         from: 'EHS Agent <onboarding@resend.dev>',
         to: ['sales@embrenn.ca'],
@@ -68,32 +55,17 @@ app.post('/chat', async (req, res) => {
     }
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 300,
-        system: systemPrompt,
-        messages
-      })
+      headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 150, system: systemPrompt, messages })
     });
     const data = await response.json();
-    if (data.error) {
-      console.error('Anthropic API error:', data.error);
-      return res.status(500).json({ reply: 'Sorry, I am having trouble connecting right now. Please try again in a moment.' });
-    }
-    if (!data.content || !Array.isArray(data.content)) {
-      console.error('Unexpected response:', data);
-      return res.status(500).json({ reply: 'Sorry, I am having trouble connecting right now. Please try again in a moment.' });
-    }
+    if (data.error) { console.error('Anthropic error:', data.error); return res.status(500).json({ reply: 'Sorry, having trouble connecting. Please try again.' }); }
+    if (!data.content || !Array.isArray(data.content)) { return res.status(500).json({ reply: 'Sorry, having trouble connecting. Please try again.' }); }
     const reply = data.content.map(b => b.text || '').join('');
     res.json({ reply });
   } catch (err) {
     console.error('Server error:', err);
-    res.status(500).json({ reply: 'Sorry, I am having trouble connecting right now. Please try again in a moment.' });
+    res.status(500).json({ reply: 'Sorry, having trouble connecting. Please try again.' });
   }
 });
 
@@ -115,8 +87,8 @@ app.get('/widget.js', (req, res) => {
   function getProductContext() {
     var isProduct = window.location.pathname.indexOf('/products/') !== -1;
     if (!isProduct) return null;
-    var name = document.querySelector('h1.productView-title, h1[itemprop="name"], .productView h1');
-    return { name: name ? name.innerText.trim() : document.title, url: window.location.href };
+    var el = document.querySelector('h1.productView-title, h1[itemprop="name"], .productView h1');
+    return { name: el ? el.innerText.trim() : document.title, url: window.location.href };
   }
 
   var s = document.createElement('style');
@@ -165,8 +137,7 @@ app.get('/widget.js', (req, res) => {
   function startQuoteFlow() {
     inQuote = true; quoteStep = 0;
     quoteName = ''; quoteEmail = ''; quoteCompany = ''; quotePhone = '';
-    startChat();
-    updateProgress(0);
+    startChat(); updateProgress(0);
     document.getElementById('ehs-back').classList.add('on');
     addMsg(quoteSteps[0].msg, 'a');
     document.getElementById('ehs-in').placeholder = 'Enter your full name...';
@@ -175,31 +146,17 @@ app.get('/widget.js', (req, res) => {
 
   function updateProgress(step) {
     var prog = document.getElementById('ehs-prog');
-    var fill = document.getElementById('ehs-prog-fill');
-    var label = document.getElementById('ehs-prog-label');
     prog.classList.add('on');
-    fill.style.width = quoteSteps[step].pct;
-    label.textContent = quoteSteps[step].label;
+    document.getElementById('ehs-prog-fill').style.width = quoteSteps[step].pct;
+    document.getElementById('ehs-prog-label').textContent = quoteSteps[step].label;
   }
 
   function handleQuoteStep(txt) {
     addMsg(txt, 'u');
-    if (quoteStep === 0) {
-      quoteName = txt; quoteStep = 1; updateProgress(1);
-      addMsg(quoteSteps[1].msg, 'a');
-      document.getElementById('ehs-in').placeholder = 'Enter your email address...';
-    } else if (quoteStep === 1) {
-      quoteEmail = txt; quoteStep = 2; updateProgress(2);
-      addMsg(quoteSteps[2].msg, 'a');
-      document.getElementById('ehs-in').placeholder = 'Enter your company name...';
-    } else if (quoteStep === 2) {
-      quoteCompany = txt; quoteStep = 3; updateProgress(3);
-      addMsg(quoteSteps[3].msg, 'a');
-      document.getElementById('ehs-in').placeholder = 'Enter phone number or type skip...';
-    } else if (quoteStep === 3) {
-      quotePhone = (txt.toLowerCase() === 'skip') ? 'Not provided' : txt;
-      finishQuote();
-    }
+    if (quoteStep === 0) { quoteName = txt; quoteStep = 1; updateProgress(1); addMsg(quoteSteps[1].msg, 'a'); document.getElementById('ehs-in').placeholder = 'Enter your email address...'; }
+    else if (quoteStep === 1) { quoteEmail = txt; quoteStep = 2; updateProgress(2); addMsg(quoteSteps[2].msg, 'a'); document.getElementById('ehs-in').placeholder = 'Enter your company name...'; }
+    else if (quoteStep === 2) { quoteCompany = txt; quoteStep = 3; updateProgress(3); addMsg(quoteSteps[3].msg, 'a'); document.getElementById('ehs-in').placeholder = 'Enter phone number or type skip...'; }
+    else if (quoteStep === 3) { quotePhone = (txt.toLowerCase() === 'skip') ? 'Not provided' : txt; finishQuote(); }
   }
 
   function finishQuote() {
@@ -208,14 +165,7 @@ app.get('/widget.js', (req, res) => {
     document.getElementById('ehs-in').placeholder = 'Ask EHS Agent a question...';
     var summary = 'Thank you ' + quoteName + ' from ' + quoteCompany + '. Our sales team will contact you at ' + quoteEmail + (quotePhone !== 'Not provided' ? ' or ' + quotePhone : '') + ' within 10 minutes with your quote.';
     addMsg(summary, 'a');
-    fetch(QUOTE_URL, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        name: quoteName, email: quoteEmail, company: quoteCompany, phone: quotePhone,
-        product: productCtx ? productCtx.name : null
-      })
-    }).catch(function(e) { console.error('Quote email error:', e); });
+    fetch(QUOTE_URL, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ name: quoteName, email: quoteEmail, company: quoteCompany, phone: quotePhone, product: productCtx ? productCtx.name : null }) }).catch(function(e) { console.error('Quote email error:', e); });
   }
 
   function resetToMain() {
@@ -237,11 +187,11 @@ app.get('/widget.js', (req, res) => {
   document.getElementById('ehs-in').addEventListener('keydown', function(e) { if (e.key === 'Enter') send(); });
   document.querySelectorAll('.eh-qb:not(#ehs-quote-btn)').forEach(function(b) { b.onclick = function() { go(this.getAttribute('data-q')); }; });
 
-  if (productCtx) {
-    setTimeout(function() {
-      if (!autoOpened) {
-        autoOpened = true;
-        document.getElementById('ehs-box').classList.add('on');
+  setTimeout(function() {
+    if (!autoOpened) {
+      autoOpened = true;
+      document.getElementById('ehs-box').classList.add('on');
+      if (productCtx) {
         startChat();
         var greeting = 'I am on the product page for "' + productCtx.name + '". Can you help me with stock availability, multi-unit pricing, or a quick quote?';
         hist.push({role:'user', content: greeting});
@@ -250,8 +200,8 @@ app.get('/widget.js', (req, res) => {
         .then(function(r){return r.json();}).then(function(d){typing(false);hist.push({role:'assistant',content:d.reply});addMsg(d.reply,'a');document.getElementById('ehs-back').classList.add('on');})
         .catch(function(){typing(false);});
       }
-    }, 4000);
-  }
+    }
+  }, 3000);
 
   function startChat() {
     if (started) return; started = true;
@@ -262,18 +212,14 @@ app.get('/widget.js', (req, res) => {
   function addMsg(txt, who) { var ms = document.getElementById('ehs-ms'); var d = document.createElement('div'); d.className = who === 'u' ? 'mu' : 'ma'; d.textContent = txt; ms.appendChild(d); ms.scrollTop = ms.scrollHeight; }
   function typing(show) { var t = document.getElementById('ehs-typ'); if (show && !t) { var ms = document.getElementById('ehs-ms'); t = document.createElement('div'); t.id = 'ehs-typ'; t.className = 'mt'; t.textContent = 'EHS Agent is typing...'; ms.appendChild(t); ms.scrollTop = ms.scrollHeight; } else if (!show && t) { t.parentNode.removeChild(t); } }
   function go(txt) {
-    startChat();
-    document.getElementById('ehs-back').classList.add('on');
+    startChat(); document.getElementById('ehs-back').classList.add('on');
     addMsg(txt, 'u'); hist.push({role:'user',content:txt}); typing(true);
     fetch(CHAT_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:hist,productContext:productCtx})})
     .then(function(r){return r.json();}).then(function(d){typing(false);hist.push({role:'assistant',content:d.reply});addMsg(d.reply,'a');})
     .catch(function(){typing(false);addMsg('Sorry, having trouble connecting. Please try again.','a');});
   }
   function send() {
-    var inp = document.getElementById('ehs-in');
-    var txt = inp.value.trim();
-    if (!txt) return;
-    inp.value = '';
+    var inp = document.getElementById('ehs-in'); var txt = inp.value.trim(); if (!txt) return; inp.value = '';
     if (inQuote) { handleQuoteStep(txt); return; }
     go(txt);
   }

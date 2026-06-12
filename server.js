@@ -22,10 +22,10 @@ STOCK AVAILABILITY RULE — this is critical:
 - This applies to ALL products: displays, UPS units, and any other product.
 
 QUOTE ROUTING RULE — this is critical:
-- Whenever a customer asks for a quote, pricing, volume pricing, bulk pricing, or availability — NEVER give them contact details and tell them to reach out themselves.
-- ALWAYS respond with: "I can get that quote started for you right now — would you like to proceed?" and wait for them to confirm before the quote flow begins.
-- The quote flow collects: Name, Email, Company, Phone, Products and Quantities — all handled in the chat widget.
-- You never need to direct them to call or email — the widget handles everything.
+- Whenever a customer asks for a quote, pricing, volume pricing, bulk pricing, or availability — respond with ONLY this exact phrase and nothing else: "TRIGGER_QUOTE_FLOW"
+- Do not list questions. Do not ask for name, email, or any details yourself. Do not number anything.
+- The widget has a built-in professional form that handles all data collection automatically.
+- You never need to collect info yourself — just return "TRIGGER_QUOTE_FLOW" and the form takes over.
 
 PRODUCT PAGE BEHAVIOR:
 - If product context is provided, reference the specific product name and category (Display or UPS).
@@ -171,7 +171,16 @@ app.get('/widget.js', (req, res) => {
     hist.push({role:'user', content: greeting});
     typing(true);
     fetch(CHAT_URL, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:hist, productContext:productCtx, sessionContext:getSessionContext()})})
-    .then(function(r){return r.json();}).then(function(d){typing(false);hist.push({role:'assistant',content:d.reply});addMsg(d.reply,'a');})
+    .then(function(r){return r.json();}).then(function(d){
+      typing(false);
+      if (d.reply && d.reply.trim() === 'TRIGGER_QUOTE_FLOW') {
+        hist.push({role:'assistant', content: 'Starting quote form.'});
+        startQuoteFlow();
+      } else {
+        hist.push({role:'assistant',content:d.reply});
+        addMsg(d.reply,'a');
+      }
+    })
     .catch(function(){typing(false);});
   }
 
@@ -332,7 +341,16 @@ app.get('/widget.js', (req, res) => {
     startChat(); document.getElementById('ehs-back').classList.add('on');
     addMsg(txt, 'u'); hist.push({role:'user',content:txt}); typing(true);
     fetch(CHAT_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:hist,productContext:productCtx,sessionContext:getSessionContext()})})
-    .then(function(r){return r.json();}).then(function(d){typing(false);hist.push({role:'assistant',content:d.reply});addMsg(d.reply,'a');})
+    .then(function(r){return r.json();}).then(function(d){
+      typing(false);
+      if (d.reply && d.reply.trim() === 'TRIGGER_QUOTE_FLOW') {
+        hist.push({role:'assistant', content: 'Starting quote form.'});
+        startQuoteFlow();
+      } else {
+        hist.push({role:'assistant',content:d.reply});
+        addMsg(d.reply,'a');
+      }
+    })
     .catch(function(){typing(false);addMsg('Sorry, having trouble connecting. Please try again.','a');});
   }
   function send() {

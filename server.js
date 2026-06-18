@@ -331,41 +331,25 @@ app.get('/widget.js', (req, res) => {
     lbl.classList.toggle('hidden', box.classList.contains('on'));
   }
 
+  function dismissChat() {
+    document.getElementById('ehs-box').classList.remove('on');
+    document.getElementById('ehs-label').classList.remove('hidden');
+    try { sessionStorage.setItem('ehs_dismissed', '1'); dismissed = true; } catch(e) {}
+  }
+
   document.getElementById('ehs-fab').onclick = toggleChat;
   document.getElementById('ehs-label').onclick = toggleChat;
-  document.getElementById('ehs-cx').onclick = function() { document.getElementById('ehs-box').classList.remove('on'); document.getElementById('ehs-label').classList.remove('hidden'); };
+  document.getElementById('ehs-cx').onclick = dismissChat;
   document.getElementById('ehs-back').onclick = resetToMain;
   document.getElementById('ehs-quote-btn').onclick = startQuoteFlow;
   document.getElementById('ehs-sb').onclick = send;
   document.getElementById('ehs-in').addEventListener('keydown', function(e) { if (e.key === 'Enter') send(); });
   document.querySelectorAll('.eh-qb:not(#ehs-quote-btn)').forEach(function(b) { b.onclick = function() { go(this.getAttribute('data-q')); }; });
 
-  document.addEventListener('mouseleave', function(e) {
-    if (e.clientY < 10 && !exitIntentFired && !autoOpened) {
-      exitIntentFired = true; autoOpened = true;
-      document.getElementById('ehs-box').classList.add('on');
-      document.getElementById('ehs-label').classList.add('hidden');
-      triggerSmartGreeting();
-    }
-  });
-
-  setTimeout(function() {
-    if (!autoOpened && productCtx) {
-      autoOpened = true;
-      document.getElementById('ehs-box').classList.add('on');
-      document.getElementById('ehs-label').classList.add('hidden');
-      triggerSmartGreeting();
-    }
-  }, 60000);
-
-  setTimeout(function() {
-    if (!autoOpened) {
-      autoOpened = true;
-      document.getElementById('ehs-box').classList.add('on');
-      document.getElementById('ehs-label').classList.add('hidden');
-      if (productCtx || returnVisitor || cartItems.length > 0) { triggerSmartGreeting(); }
-    }
-  }, 3000);
+  // Passive mode — only open when visitor clicks. Never auto-open or re-open after dismissal.
+  // Dismissed state persists for the entire browser session.
+  var dismissed = false;
+  try { dismissed = sessionStorage.getItem('ehs_dismissed') === '1'; } catch(e) {}
 
   function triggerSmartGreeting() {
     startChat();
